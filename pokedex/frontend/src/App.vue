@@ -9,6 +9,28 @@ const loading = ref(false)
 
 const API_URL = 'http://127.0.0.1:8000/api/pokemons/'
 
+// Efeito sonoro retrô usando Web Audio API (sem precisar carregar arquivo externo)
+const playBeep = (freq = 600, type = 'sine', duration = 0.08) => {
+  try {
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)()
+    const osc = audioCtx.createOscillator()
+    const gain = audioCtx.createGain()
+    
+    osc.type = type
+    osc.frequency.setValueAtTime(freq, audioCtx.currentTime)
+    gain.gain.setValueAtTime(0.05, audioCtx.currentTime)
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration)
+    
+    osc.connect(gain)
+    gain.connect(audioCtx.destination)
+    
+    osc.start()
+    osc.stop(audioCtx.currentTime + duration)
+  } catch (e) {
+    // AudioContext não permitido sem interação prévia do usuário
+  }
+}
+
 // Buscar Pokémons salvos no Django
 const fetchPokemons = async () => {
   loading.value = true
@@ -27,6 +49,7 @@ const fetchPokemons = async () => {
 
 // Chamar endpoint de seed
 const seedDatabase = async () => {
+  playBeep(400, 'square', 0.15)
   loading.value = true
   try {
     await axios.post(`${API_URL}seed/`, { limit: 151 })
@@ -40,6 +63,7 @@ const seedDatabase = async () => {
 
 // Favoritar/Desfavoritar
 const toggleFavorite = async (pokemon) => {
+  playBeep(800, 'sine', 0.1)
   try {
     const updated = !pokemon.is_favorite
     await axios.patch(`${API_URL}${pokemon.id}/`, { is_favorite: updated })
@@ -51,12 +75,14 @@ const toggleFavorite = async (pokemon) => {
 
 // Selecionar Pokémon
 const selectPokemon = (poke) => {
+  playBeep(700, 'sine', 0.05)
   selectedPokemon.value = poke
 }
 
 // Navegação
 const nextPokemon = () => {
   if (!selectedPokemon.value || pokemons.value.length === 0) return
+  playBeep(650, 'triangle', 0.06)
   const currentIndex = pokemons.value.findIndex(p => p.id === selectedPokemon.value.id)
   if (currentIndex < pokemons.value.length - 1) {
     selectedPokemon.value = pokemons.value[currentIndex + 1]
@@ -65,6 +91,7 @@ const nextPokemon = () => {
 
 const prevPokemon = () => {
   if (!selectedPokemon.value || pokemons.value.length === 0) return
+  playBeep(550, 'triangle', 0.06)
   const currentIndex = pokemons.value.findIndex(p => p.id === selectedPokemon.value.id)
   if (currentIndex > 0) {
     selectedPokemon.value = pokemons.value[currentIndex - 1]
@@ -88,7 +115,7 @@ onMounted(fetchPokemons)
     <div class="left-panel">
       <!-- Luzes/LEDs do topo -->
       <div class="top-lights">
-        <div class="big-blue-light">
+        <div class="big-blue-light" :class="{ 'glowing': loading }">
           <div class="light-reflection"></div>
         </div>
         <div class="small-lights">
@@ -129,13 +156,13 @@ onMounted(fetchPokemons)
       <div class="controls">
         <button class="black-btn" @click="seedDatabase">IMPORTAR</button>
         <div class="pill-btns">
-          <span class="pill red-pill"></span>
-          <span class="pill blue-pill"></span>
+          <span class="pill red-pill" @click="playBeep(300)"></span>
+          <span class="pill blue-pill" @click="playBeep(900)"></span>
         </div>
         <div class="dpad">
-          <button class="dpad-btn up"></button>
+          <button class="dpad-btn up" @click="playBeep(600)"></button>
           <button class="dpad-btn right" @click="nextPokemon"></button>
-          <button class="dpad-btn down"></button>
+          <button class="dpad-btn down" @click="playBeep(600)"></button>
           <button class="dpad-btn left" @click="prevPokemon"></button>
           <div class="dpad-center"></div>
         </div>
@@ -190,7 +217,7 @@ onMounted(fetchPokemons)
 
       <!-- Botões Teclado Numérico / Grid -->
       <div class="blue-grid-buttons">
-        <div class="blue-btn" v-for="n in 10" :key="n"></div>
+        <div class="blue-btn" v-for="n in 10" :key="n" @click="playBeep(400 + n * 50)"></div>
       </div>
 
       <!-- Ações da Tela Direita -->
@@ -199,7 +226,7 @@ onMounted(fetchPokemons)
           <button class="arrow-btn" @click="prevPokemon">◀</button>
           <button class="arrow-btn" @click="nextPokemon">▶</button>
         </div>
-        <div class="yellow-action-btn">
+        <div class="yellow-action-btn" @click="playBeep(1000, 'sine', 0.2)">
           POKÉDEX DATA
         </div>
       </div>
@@ -208,7 +235,6 @@ onMounted(fetchPokemons)
 </template>
 
 <style scoped>
-/* Reset Local */
 * {
   box-sizing: border-box;
 }
@@ -217,7 +243,7 @@ onMounted(fetchPokemons)
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  background-color: #2b2b2b;
+  background-color: #1e1e24;
   padding: 30px;
   min-height: 100vh;
   font-family: 'Courier New', Courier, monospace;
@@ -230,8 +256,7 @@ onMounted(fetchPokemons)
   border: 4px solid #8b0000;
   border-radius: 20px 0 0 20px;
   padding: 20px;
-  box-shadow: -10px 10px 0px rgba(0,0,0,0.4);
-  position: relative;
+  box-shadow: -10px 10px 0px rgba(0,0,0,0.5);
 }
 
 /* Luzes Superiores */
@@ -248,8 +273,18 @@ onMounted(fetchPokemons)
   background: radial-gradient(circle at 30% 30%, #00f0ff, #0088cc, #003366);
   border: 4px solid #ffffff;
   border-radius: 50%;
-  box-shadow: 0 0 10px #00f0ff;
+  box-shadow: 0 0 12px #00f0ff;
   position: relative;
+  transition: transform 0.2s;
+}
+
+.big-blue-light.glowing {
+  animation: pulse-glow 0.8s infinite alternate;
+}
+
+@keyframes pulse-glow {
+  0% { box-shadow: 0 0 5px #00f0ff; transform: scale(0.98); }
+  100% { box-shadow: 0 0 25px #00f0ff; transform: scale(1.05); }
 }
 
 .light-reflection {
@@ -283,6 +318,7 @@ onMounted(fetchPokemons)
   border: 3px solid #000;
   border-radius: 15px 15px 15px 40px;
   padding: 15px;
+  box-shadow: inset -3px -3px 0px rgba(0,0,0,0.15);
 }
 
 .screen-header {
@@ -308,13 +344,19 @@ onMounted(fetchPokemons)
   justify-content: center;
   align-items: center;
   position: relative;
+  box-shadow: inset 0 0 15px rgba(0,0,0,0.8);
 }
 
 .poke-display img {
   width: 180px;
   height: 180px;
   object-fit: contain;
-  filter: drop-shadow(0px 5px 5px rgba(0,0,0,0.5));
+  filter: drop-shadow(0px 8px 8px rgba(0,0,0,0.6));
+  transition: transform 0.2s ease-in-out;
+}
+
+.poke-display img:hover {
+  transform: scale(1.08);
 }
 
 .fav-star {
@@ -323,8 +365,17 @@ onMounted(fetchPokemons)
   right: 10px;
   background: none;
   border: none;
-  font-size: 1.5rem;
+  font-size: 1.6rem;
   cursor: pointer;
+  transition: transform 0.1s;
+}
+
+.fav-star:hover {
+  transform: scale(1.2);
+}
+
+.fav-star:active {
+  transform: scale(0.9);
 }
 
 .empty-screen {
@@ -345,6 +396,17 @@ onMounted(fetchPokemons)
   border: 2px solid #000;
   border-radius: 50%;
   cursor: pointer;
+  box-shadow: 1px 2px 0px #000;
+  transition: all 0.08s;
+}
+
+.big-red-btn:hover {
+  background: #ff3333;
+}
+
+.big-red-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0px 0px 0px #000;
 }
 
 .speakers span {
@@ -372,6 +434,17 @@ onMounted(fetchPokemons)
   font-weight: bold;
   cursor: pointer;
   font-size: 0.75rem;
+  box-shadow: 2px 3px 0px #000;
+  transition: all 0.08s;
+}
+
+.black-btn:hover {
+  background: #333;
+}
+
+.black-btn:active {
+  transform: translate(2px, 3px);
+  box-shadow: 0px 0px 0px #000;
 }
 
 .pill-btns {
@@ -384,7 +457,20 @@ onMounted(fetchPokemons)
   height: 12px;
   border-radius: 10px;
   border: 1px solid #000;
+  cursor: pointer;
+  box-shadow: 1px 2px 0px #000;
+  transition: all 0.08s;
 }
+
+.pill:hover {
+  filter: brightness(1.2);
+}
+
+.pill:active {
+  transform: translateY(2px);
+  box-shadow: 0px 0px 0px #000;
+}
+
 .red-pill { background: #ff0000; }
 .blue-pill { background: #0088cc; }
 
@@ -400,6 +486,15 @@ onMounted(fetchPokemons)
   background: #222;
   border: 1px solid #000;
   cursor: pointer;
+  transition: background-color 0.1s;
+}
+
+.dpad-btn:hover {
+  background: #444;
+}
+
+.dpad-btn:active {
+  background: #000;
 }
 
 .dpad-btn.up { top: 0; left: 27px; width: 26px; height: 27px; border-radius: 4px 4px 0 0; }
@@ -433,7 +528,7 @@ onMounted(fetchPokemons)
   border: 4px solid #8b0000;
   border-radius: 0 20px 20px 20px;
   padding: 20px;
-  box-shadow: 10px 10px 0px rgba(0,0,0,0.4);
+  box-shadow: 10px 10px 0px rgba(0,0,0,0.5);
   margin-top: 40px;
 }
 
@@ -472,7 +567,6 @@ onMounted(fetchPokemons)
   border: 1px solid #000;
 }
 
-/* Cores por tipo */
 .badge.grass { background-color: #78c850; }
 .badge.fire { background-color: #f08030; }
 .badge.water { background-color: #6890f0; }
@@ -489,6 +583,12 @@ onMounted(fetchPokemons)
   border-radius: 5px;
   font-family: inherit;
   font-weight: bold;
+  outline: none;
+  transition: background 0.2s;
+}
+
+.search-box input:focus {
+  background: #c8ecc8;
 }
 
 .pokemon-list-scroll {
@@ -501,7 +601,7 @@ onMounted(fetchPokemons)
 }
 
 .list-item {
-  padding: 5px;
+  padding: 5px 8px;
   font-size: 0.8rem;
   font-weight: bold;
   color: #000;
@@ -509,10 +609,16 @@ onMounted(fetchPokemons)
   display: flex;
   justify-content: space-between;
   border-bottom: 1px dashed #28572e;
+  transition: background-color 0.15s;
 }
 
-.list-item:hover, .list-item.active {
+.list-item:hover {
+  background: #7ec288;
+}
+
+.list-item.active {
   background: #a8dba8;
+  border-left: 4px solid #000;
 }
 
 /* Teclado Numérico Azul */
@@ -528,6 +634,18 @@ onMounted(fetchPokemons)
   background: #0088cc;
   border: 2px solid #000;
   border-radius: 4px;
+  box-shadow: 1px 2px 0px #000;
+  cursor: pointer;
+  transition: all 0.08s;
+}
+
+.blue-btn:hover {
+  background: #00aaff;
+}
+
+.blue-btn:active {
+  transform: translate(1px, 2px);
+  box-shadow: 0px 0px 0px #000;
 }
 
 /* Controles Inferiores */
@@ -551,6 +669,17 @@ onMounted(fetchPokemons)
   font-weight: bold;
   border-radius: 5px;
   cursor: pointer;
+  box-shadow: 2px 2px 0px #000;
+  transition: all 0.08s;
+}
+
+.arrow-btn:hover {
+  background: #ffffff;
+}
+
+.arrow-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 0px 0px 0px #000;
 }
 
 .yellow-action-btn {
@@ -562,5 +691,16 @@ onMounted(fetchPokemons)
   font-size: 0.75rem;
   color: #000;
   box-shadow: 2px 2px 0px #000;
+  cursor: pointer;
+  transition: all 0.08s;
+}
+
+.yellow-action-btn:hover {
+  background: #ffdd44;
+}
+
+.yellow-action-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 0px 0px 0px #000;
 }
 </style>
