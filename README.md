@@ -14,7 +14,7 @@ Como a aplicação funciona em uma única tela, as capturas abaixo mostram difer
 | --- | --- |
 | ![Lista filtrada por Pokémon do tipo fogo](./docs/screenshots/filtro-por-tipo.png) | ![Pokédex exibindo somente os favoritos](./docs/screenshots/favoritos.png) |
 
-As ilustrações dos Pokémon são carregadas de URLs externas da PokéAPI. Elas podem não aparecer nas capturas feitas em ambientes sem acesso à internet.
+Na aplicação, as ilustrações dos Pokémon são carregadas de URLs externas da PokéAPI e exigem acesso à internet. As capturas deste README incluem as artes para exibição direta no GitHub.
 
 ## Funcionalidades
 
